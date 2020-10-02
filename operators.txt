@@ -1,10 +1,7 @@
 new
-do
 return
- throw
-else
-try
-case
+throw 
+case 
 ++
 --
 +=
