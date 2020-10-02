@@ -80,7 +80,7 @@ public class Halstead {
             }
         }
         //Удаление классов(объявление)
-        groovyProgram = groovyProgram.replaceAll("class\\s+" + id + "\\s+[{]", " ");
+        groovyProgram = groovyProgram.replaceAll("class\\s+" + id + "\\s*[{]", " ");
 
 
         //Подсчет и удаление методов и управляющих операторов(все что со скобочками)
@@ -101,16 +101,17 @@ public class Halstead {
             m = p.matcher(sb);
         }
 
-        //Подсчет и удаление оставшихся операторов
-        for (String op : operators.keySet()) {
-            int start = sb.indexOf(op);
-            while (start != -1) {
-                operators.put(op, operators.get(op) + 1);
-                sb.replace(start, start + op.length(), " ");
-                start = sb.indexOf(op);
+        HashMap<String, Integer> operatorsWithBraces = new HashMap<>();
+        Files.lines(Paths.get("operatorsWithBraces.txt")).forEach(line -> operatorsWithBraces.put(line, 1));
+        for (String op : operatorsWithBraces.keySet()) {
+            p = Pattern.compile(op + "\\s*[{]");
+            m = p.matcher(sb);
+            while (m.find()) {
+                operatorsWithBraces.put(op, operatorsWithBraces.get(op) + 1);
+                sb.delete(m.start(), m.end() - 1);
+                m = p.matcher(sb);
             }
         }
-
 
         groovyProgram = sb.toString();
 
@@ -119,7 +120,20 @@ public class Halstead {
             groovyProgram = groovyProgram.replaceAll("[\\s\n]+" + keyWord + "\\s+", " ");
         }
 
-        groovyProgram = groovyProgram.trim();
+        sb = new StringBuilder(groovyProgram);
+
+        //Подсчет и удаление оставшихся операторов
+        for (String op : operators.keySet()) {
+            int start = groovyProgram.indexOf(op);
+            while (start != -1) {
+                operators.put(op, operators.get(op) + 1);
+                sb.replace(start, start + op.length(), " ");
+                start = sb.indexOf(op);
+            }
+        }
+
+
+        groovyProgram = sb.toString().trim();
         //Подсчет оставшихся операндов
         String[] ops = groovyProgram.split("\\s+");
         for (String operand : ops) {
@@ -127,26 +141,26 @@ public class Halstead {
                 operands.put(operand, operands.get(operand) + 1);
             } else {
                 operands.put(operand, 1);
-              }
-    }
+            }
+        }
 
 
 //        System.out.println(operands);
 //        System.out.println(methods);
 //        System.out.println(operators);
 
-        int doCount    = 0;
+        int doCount = 0;
         int whileCount = 0;
-        int opCount    = 0;
+        int opCount = 0;
 
         //Подсчет словаря операторов
-        for (Map.Entry<String, Integer> it : operators.entrySet()){
-            if (it.getValue() != 0  && !( it.getKey().equals("}")
+        for (Map.Entry<String, Integer> it : operators.entrySet()) {
+            if (it.getValue() != 0 && !(it.getKey().equals("}")
                     || it.getKey().equals("]")
                     || it.getKey().equals(")")
                     || it.getKey().equals(":")
                     || it.getKey().equals("else")
-                    || it.getKey().equals("case"))){
+                    || it.getKey().equals("case"))) {
                 dictOperatorCount++;
                 opCount += it.getValue();
             }
@@ -155,7 +169,7 @@ public class Halstead {
         dictOperatorCount += methods.size();
 
         if (operators.containsKey("do"))
-            doCount    = operators.get("do");
+            doCount = operators.get("do");
         if (methods.containsKey("while"))
             whileCount = methods.get("while");
 
@@ -172,7 +186,7 @@ public class Halstead {
         opCount -= doCount;
         operatorCount = opCount;
 
-        for (Map.Entry<String, Integer> it : operands.entrySet()){
+        for (Map.Entry<String, Integer> it : operands.entrySet()) {
             operandCount += it.getValue();
             resSB.append(it.getKey() + " - " + it.getValue() + "\n");
         }
@@ -194,13 +208,13 @@ public class Halstead {
         System.out.println(operators);
 
         operatorsArrayList = new ArrayList<>();
-        for (Map.Entry<String, Integer> it : operators.entrySet()){
+        for (Map.Entry<String, Integer> it : operators.entrySet()) {
             if (it.getKey().equals("else") ||
-                it.getKey().equals("case") ||
-                it.getKey().equals(")")    ||
-                it.getKey().equals("}")    ||
-                it.getKey().equals("]")    ||
-                it.getKey().equals(":")) continue;
+                    it.getKey().equals("case") ||
+                    it.getKey().equals(")") ||
+                    it.getKey().equals("}") ||
+                    it.getKey().equals("]") ||
+                    it.getKey().equals(":")) continue;
             if (it.getValue() != 0) {
                 if (it.getKey().equals("[")) {
                     operatorsArrayList.add(new PairEntry("[..]", it.getValue()));
@@ -220,22 +234,23 @@ public class Halstead {
             }
         }
 
-        for (Map.Entry<String, Integer> it : methods.entrySet()){
-            if (it.getValue() != 0){
+        for (Map.Entry<String, Integer> it : methods.entrySet()) {
+            if (it.getValue() != 0) {
                 if (it.getKey().equals("while")) continue;
-                if (it.getKey().equals("else")) continue;;
+                if (it.getKey().equals("else")) continue;
+                ;
 
                 if (it.getKey().equals("if")) {
                     operatorsArrayList.add(new PairEntry("if(..){..}else{..}", it.getValue()));
-                }   else if (it.getKey().equals("switch")){
+                } else if (it.getKey().equals("switch")) {
                     operatorsArrayList.add(new PairEntry("switch(..){ case... }", it.getValue()));
-                }   else {
+                } else {
                     operatorsArrayList.add(new PairEntry(it.getKey() + "(..)", it.getValue()));
                 }
             }
         }
 
-        if (whileCount - doCount > 0){
+        if (whileCount - doCount > 0) {
             operatorsArrayList.add(new PairEntry("while(..){..}", whileCount - doCount));
         }
     }
